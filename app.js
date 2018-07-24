@@ -1,80 +1,52 @@
-const express = require("express");
-const app = express();
-const port = process.env.PORT || 3000;
-const bodyParser = require("body-parser");
-const mongoose = require("mongoose");
+const express = require("express"),
+    app = express(),
+    port = process.env.PORT || 3000,
+    bodyParser = require("body-parser"),
+    mongoose = require("mongoose"),
+    passport = require("passport"),
+    LocalStrategy = require("passport-local"),
+    User = require("./models/user"),
+    seedDB = require("./seeds"),
+    commentRoutes = require("./routes/comments"),
+    campgroundRoutes = require("./routes/campgrounds"),
+    indexRoutes = require("./routes/index"),
+    methodOverride = require("method-override"),
+    flash = require("connect-flash");
 
 mongoose.connect("mongodb://localhost:/yelp_camp");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
+app.use(express.static(__dirname + "/public"));
+app.use(methodOverride("_method"));
+app.use(flash());
+app.locals.moment = require("moment");
+// seedDB();
 
-const campgroundSchema = new mongoose.Schema({
-  name: String,
-  image: String,
-  description: String
+//passport Configuration
+app.use(
+    require("express-session")({
+        secret: "Tom Eldon Austin",
+        resave: false,
+        saveUninitialized: false
+    })
+);
+app.use(passport.initialize());
+app.use(passport.session());
+passport.use(new LocalStrategy(User.authenticate()));
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
+
+app.use((req, res, next) => {
+    res.locals.currentUser = req.user;
+    res.locals.error = req.flash("error");
+    res.locals.success = req.flash("success");
+    next();
 });
 
-const Campground = mongoose.model("Campground", campgroundSchema);
-
-// Campground.create(
-//   {
-//     name: "Granite Hill",
-//     image:
-//       "https://res.cloudinary.com/simpleview/image/upload/c_limit,f_auto,h_1200,q_75,w_1200/v1/clients/poconos/Campgrounds_Tent_Sites_Woman_Hemlock_Campground_4_PoconoMtns_06f196d5-8814-4803-a132-8a4daae1755e.jpg",
-//     description:
-//       "This is a huge granite hill, no bathrooms, No water. Beautiful granite!"
-//   },
-//   (err, campground) => {
-//     if (err) {
-//       console.log(err);
-//     } else {
-//       console.log("new campground:", campground);
-//     }
-//   }
-// );
-
-app.get("/", (req, res) => {
-  res.render("landing");
-});
-
-app.get("/campgrounds", (req, res) => {
-  Campground.find({}, (err, allCampgrounds) => {
-    if (err) {
-      console.log(err);
-    } else {
-      res.render("index", { campgrounds: allCampgrounds });
-    }
-  });
-});
-
-app.post("/campgrounds", (req, res) => {
-  var name = req.body.name;
-  var image = req.body.image;
-  var desc = req.body.description;
-  var newCampground = { name: name, image: image, description: desc };
-  Campground.create(newCampground, (err, newlyCreated) => {
-    if (err) {
-      console.log(err);
-    } else {
-      res.redirect("/campgrounds");
-    }
-  });
-});
-
-app.get("/campgrounds/new", (req, res) => {
-  res.render("new");
-});
-
-app.get("/campgrounds/:id", (req, res) => {
-  Campground.findById(req.params.id, (err, foundCampground) => {
-    if (err) {
-      console.log(err);
-    } else {
-      res.render("show", { campground: foundCampground });
-    }
-  });
-});
+app.use(indexRoutes);
+app.use("/campgrounds", campgroundRoutes);
+app.use("/campgrounds/:id/comments", commentRoutes);
 
 app.listen(port, () => {
-  console.log("listening on port", port);
+    console.log("listening on port", port);
 });

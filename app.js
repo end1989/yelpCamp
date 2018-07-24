@@ -13,7 +13,10 @@ const express = require("express"),
     methodOverride = require("method-override"),
     flash = require("connect-flash");
 
-mongoose.connect("mongodb://localhost:/yelp_camp");
+// mongoose.connect("mongodb://localhost:/yelp_camp");
+mongoose.connect(
+    "mongodb://end1989:whatever123!@ds147391.mlab.com:47391/yelpcamp"
+);
 app.use(bodyParser.urlencoded({ extended: true }));
 app.set("view engine", "ejs");
 app.use(express.static(__dirname + "/public"));
